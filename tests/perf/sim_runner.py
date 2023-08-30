@@ -31,6 +31,8 @@ class SimRunner(object):
         self.sources = []
         self.top = "top"
         self.RootC = None
+        self.clsname = None
+        self.cls = None
         self.init_count = -1
         self.incr_count = -1
         self.target_ms = -1
@@ -41,10 +43,14 @@ class SimRunner(object):
         Ctor.init(Context())
 
     def setup(self, RootC, init_count, incr_count, target_ms):
-        cls = Ctor.inst().ctxt().findDataTypeStruct(RootC.__qualname__)
-        if cls is None:
+        self.RootC = RootC
+        self.init_count = init_count
+        self.incr_count = incr_count
+        self.target_ms  = target_ms
+        self.cls = Ctor.inst().ctxt().findDataTypeStruct(RootC.__qualname__)
+        if self.cls is None:
             raise Exception("Failed to find class %s" % RootC.__qualname__)
-        clsname = RootC.__qualname__.split('.')[-1]
+        self.clsname = RootC.__qualname__.split('.')[-1]
 
         analysis_pkg = self.getAnalysisPkg()
 
@@ -52,7 +58,7 @@ class SimRunner(object):
 package cls_pkg;
 {0}
 endpackage
-  '''.format(SystemVerilogClassGen().generate(cls))
+  '''.format(SystemVerilogClassGen().generate(self.cls))
 
         driver='''
 module top;
@@ -81,7 +87,7 @@ module top;
 
     $display("STATS: rand=%0d time_ms=%0d", total_count, (tend-tstart));
   end
-endmodule'''.format(clsname, init_count, incr_count, target_ms)
+endmodule'''.format(self.clsname, init_count, incr_count, target_ms)
 
         with open("top.sv", "w") as fp:
             fp.write(analysis_pkg)
@@ -213,7 +219,30 @@ class SimRunnerMTI(SimRunner):
             raise Exception("Run failed")
         
         return self.parseRunLog("vsim.log")
+
+class SimRunnerNull(SimRunner):
+
+    def setup(self, RootC, init_count, incr_count, target_ms):
+        self.RootC = RootC
+        self.init_count = init_count
+        self.incr_count = incr_count
+        self.target_ms  = target_ms
+        self.cls = Ctor.inst().ctxt().findDataTypeStruct(RootC.__qualname__)
+        if self.cls is None:
+            raise Exception("Failed to find class %s" % RootC.__qualname__)
+        self.clsname = RootC.__qualname__.split('.')[-1]
+
+        print("Class:\n%s" % SystemVerilogClassGen().generate(self.cls))
+
+    def compile(self):
+        pass
     
+    def elaborate(self):
+        pass
+    
+    def run(self) -> (int, int):
+        return (1,1)
+
 class SimRunnerVCS(SimRunner):
 
     def compile(self):

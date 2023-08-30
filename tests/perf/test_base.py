@@ -19,24 +19,30 @@
 #*     Author: 
 #*
 #****************************************************************************
+import logging
 import os
 import shutil
 import sys
 from unittest import TestCase
 from vsc_dataclasses.impl.ctor import Ctor
-from .sim_runner import SimRunnerMTI, SimRunnerXCM, SimRunnerXsim, SimRunnerVCS
+from .sim_runner import SimRunnerMTI, SimRunnerNull, SimRunnerXCM, SimRunnerXsim, SimRunnerVCS
 
 class TestBase(TestCase):
 
     Runners = {
-        "mti" : SimRunnerMTI,
-        "vcs" : SimRunnerVCS,
-        "xcm" : SimRunnerXCM,
-        "xsm" : SimRunnerXsim,
+        "mti"  : SimRunnerMTI,
+        "null" : SimRunnerNull,
+        "vcs"  : SimRunnerVCS,
+        "xcm"  : SimRunnerXCM,
+        "xsm"  : SimRunnerXsim,
     }
 
     def setUp(self) -> None:
         self.orig_cwd = os.getcwd()
+
+        if "LOGLEVEL" in os.environ.keys() and os.environ["LOGLEVEL"] != "":
+            LOGLEVEL = os.environ["LOGLEVEL"].upper()
+            logging.basicConfig(level=LOGLEVEL)
 
         if "VSC_SYSTEST_RUNDIR" in os.environ.keys() and os.environ["VSC_SYSTEST_RUNDIR"] != "":
             self.rundir = os.environ["VSC_SYSTEST_RUNDIR"]
