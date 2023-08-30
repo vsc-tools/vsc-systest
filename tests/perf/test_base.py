@@ -79,7 +79,7 @@ class TestBase(TestCase):
         os.chdir(self.orig_cwd)
         return super().tearDown()
 
-    def core_test(self, RootC, init_count, incr_count, target_ms=2000):
+    def core_test(self, RootC, init_count, incr_count, target_ms=1000):
         # TODO: determine set of classes required and order
 
         self.runner.setup(RootC, init_count, incr_count, target_ms)
@@ -88,5 +88,5 @@ class TestBase(TestCase):
         count, time_ms = self.runner.run()
         print("%s: count=%d time_ms=%d rand/s=%f" % (self.id(), count, time_ms, time_ms/count))
         with open(os.path.join(self.rundir, "results", "%s.%s.csv" % (self.runner_id, self.id())), "w") as fp:
-            fp.write("%s,%s,%d,%d,%f" % (self.runner_id,self.id(), count, time_ms, time_ms/count))
+            fp.write("%s,%s,%d,%d,%f\n" % (self.runner_id,self.id(), count, time_ms, time_ms/count))
 

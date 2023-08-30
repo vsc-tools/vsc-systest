@@ -31,7 +31,7 @@ class TestUnconstrained(TestBase):
             b : vdc.rand_uint32_t
             c : vdc.rand_uint32_t
             d : vdc.rand_uint32_t
-        self.core_test(MyC, init_count=10000, incr_count=5000, target_ms=5000)
+        self.core_test(MyC, init_count=10000, incr_count=5000)
 
     def test_8bit_4var(self):
         @vdc.randclass
@@ -40,6 +40,6 @@ class TestUnconstrained(TestBase):
             b : vdc.rand_uint8_t
             c : vdc.rand_uint8_t
             d : vdc.rand_uint8_t
-        self.core_test(MyC, init_count=10000, incr_count=5000, target_ms=5000)
+        self.core_test(MyC, init_count=10000, incr_count=5000)
 
 
