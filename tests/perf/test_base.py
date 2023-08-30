@@ -44,10 +44,10 @@ class TestBase(TestCase):
             self.rundir = os.path.join(os.getcwd(), "rundir")
 
         if not os.path.isdir(self.rundir):
-            os.makedirs(self.rundir)
+            os.makedirs(self.rundir, exist_ok=True)
 
         if not os.path.isdir(os.path.join(self.rundir, "results")):
-            os.makedirs(os.path.join(self.rundir, "results"))
+            os.makedirs(os.path.join(self.rundir, "results"), exist_ok=True)
 
         self.runner_id = "xsm"
 
@@ -63,7 +63,7 @@ class TestBase(TestCase):
         if os.path.isdir(self.testdir):
             shutil.rmtree(self.testdir)
 
-        os.makedirs(self.testdir)
+        os.makedirs(self.testdir, exist_ok=True)
         os.chdir(self.testdir)
 
 
@@ -73,10 +73,13 @@ class TestBase(TestCase):
         return super().setUp()
     
     def tearDown(self) -> None:
-        if sys.exc_info() == (None, None, None):
-            shutil.rmtree(self.testdir)
-
         os.chdir(self.orig_cwd)
+        if sys.exc_info() == (None, None, None):
+            try:
+                shutil.rmtree(self.testdir)
+            except Exception as e:
+                print("Note: failed to remove directory %s" % self.testdir)
+
         return super().tearDown()
 
     def core_test(self, RootC, init_count, incr_count, target_ms=1000):
@@ -88,5 +91,5 @@ class TestBase(TestCase):
         count, time_ms = self.runner.run()
         print("%s: count=%d time_ms=%d rand/s=%f" % (self.id(), count, time_ms, time_ms/count))
         with open(os.path.join(self.rundir, "results", "%s.%s.csv" % (self.runner_id, self.id())), "w") as fp:
-            fp.write("%s,%s,%d,%d,%f\n" % (self.runner_id,self.id(), count, time_ms, time_ms/count))
+            fp.write("%s,%s,%d,%d,%f\n" % (self.id(),self.runner_id,count, time_ms, time_ms/count))
 
