@@ -1,5 +1,5 @@
 #****************************************************************************
-#* test_smoke.py
+#* test_unconstrained.py
 #*
 #* Copyright 2022 Matthew Ballance and Contributors
 #*
@@ -22,19 +22,24 @@
 import vsc_dataclasses as vdc
 from .test_base import TestBase
 
-class TestSmoke(TestBase):
+class TestUnconstrained(TestBase):
 
-#     def test_smoke(self):
-#         @vdc.randclass
-#         class MyC(object):
-#             a : vdc.rand_uint32_t
-#             b : vdc.rand_uint32_t
+    def test_32bit_4var(self):
+        @vdc.randclass
+        class MyC(object):
+            a : vdc.rand_uint32_t
+            b : vdc.rand_uint32_t
+            c : vdc.rand_uint32_t
+            d : vdc.rand_uint32_t
+        self.core_test(MyC, init_count=10000, incr_count=5000, target_ms=5000)
 
-# #            @vdc.constraint
-# #            def ab_c(self):
-# #                self.a < self.b
+    def test_8bit_4var(self):
+        @vdc.randclass
+        class MyC(object):
+            a : vdc.rand_uint8_t
+            b : vdc.rand_uint8_t
+            c : vdc.rand_uint8_t
+            d : vdc.rand_uint8_t
+        self.core_test(MyC, init_count=10000, incr_count=5000, target_ms=5000)
 
-#         self.core_test(MyC, init_count=10000, incr_count=5000, target_ms=5000)
-
-    pass
 

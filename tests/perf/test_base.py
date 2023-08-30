@@ -20,9 +20,9 @@
 #*
 #****************************************************************************
 import os
+import shutil
+import sys
 from unittest import TestCase
-from vsc_dataclasses.impl.generators.system_verilog_class_gen import SystemVerilogClassGen
-from vsc_dataclasses.impl.pyctxt.context import Context
 from vsc_dataclasses.impl.ctor import Ctor
 from .sim_runner import SimRunnerMTI, SimRunnerXCM, SimRunnerXsim, SimRunnerVCS
 
@@ -32,108 +32,61 @@ class TestBase(TestCase):
         "mti" : SimRunnerMTI,
         "vcs" : SimRunnerVCS,
         "xcm" : SimRunnerXCM,
-        "xsim" : SimRunnerXsim,
+        "xsm" : SimRunnerXsim,
     }
 
     def setUp(self) -> None:
         self.orig_cwd = os.getcwd()
-        self.testdir = "rundir"
-        if not os.path.isdir(self.testdir):
-            os.makedirs(self.testdir)
-        os.chdir(self.testdir)
 
-        # Select the 'dummy' backend
-        Ctor.init(Context())
+        if "VSC_SYSTEST_RUNDIR" in os.environ.keys() and os.environ["VSC_SYSTEST_RUNDIR"] != "":
+            self.rundir = os.environ["VSC_SYSTEST_RUNDIR"]
+        else:
+            self.rundir = os.path.join(os.getcwd(), "rundir")
 
-        runner = "xsim"
+        if not os.path.isdir(self.rundir):
+            os.makedirs(self.rundir)
+
+        if not os.path.isdir(os.path.join(self.rundir, "results")):
+            os.makedirs(os.path.join(self.rundir, "results"))
+
+        self.runner_id = "xsm"
 
         if "VSC_SYSTEST_RUNNER" in os.environ.keys():
-            runner = os.environ["VSC_SYSTEST_RUNNER"]
+            self.runner_id = os.environ["VSC_SYSTEST_RUNNER"]
 
-        if runner in TestBase.Runners.keys():
-            self.runner = TestBase.Runners[runner]()
+        if self.runner_id in TestBase.Runners.keys():
+            self.runner = TestBase.Runners[self.runner_id]()
         else:
-            raise Exception("Runner %s is invalid" % runner)
+            raise Exception("Runner %s is invalid" % self.runner_id)
+
+        self.testdir = os.path.join(self.rundir, "%s.%s" % (self.runner_id, self.id()))
+        if os.path.isdir(self.testdir):
+            shutil.rmtree(self.testdir)
+
+        os.makedirs(self.testdir)
+        os.chdir(self.testdir)
+
+
+        
+        self.runner.initBackend()
 
         return super().setUp()
     
     def tearDown(self) -> None:
+        if sys.exc_info() == (None, None, None):
+            shutil.rmtree(self.testdir)
+
         os.chdir(self.orig_cwd)
         return super().tearDown()
 
-    def runTest(self, RootC, init_count, incr_count, target_ms=2000):
+    def core_test(self, RootC, init_count, incr_count, target_ms=2000):
         # TODO: determine set of classes required and order
 
-        cls = Ctor.inst().ctxt().findDataTypeStruct(RootC.__qualname__)
-        self.assertIsNotNone(cls)
-        clsname = RootC.__qualname__.split('.')[-1]
-
-        analysis_pkg='''
-package analysis_pkg;
-  typedef struct {
-    longint tv_sec;
-    longint tv_usec;
-  } timeval_s;
-
-  import "DPI-C" context function int gettimeofday(output timeval_s tv, input chandle r);
-
-  function automatic longint unsigned gettime_ms();
-    automatic timeval_s tv;
-    longint unsigned ret;
-
-    if (gettimeofday(tv, null) != 0) begin
-        $display("Error: gettimeofday failed");
-    end
-    ret = tv.tv_sec;
-    ret *= 1000;
-    ret += tv.tv_usec / 1000;
-
-    return ret;
-  endfunction
-endpackage'''
-
-        cls_pkg = '''
-package cls_pkg;
-{0}
-endpackage
-  '''.format(SystemVerilogClassGen().generate(cls))
-
-        driver='''
-module top;
-  import analysis_pkg::*;
-  import cls_pkg::*;
-
-  initial begin
-    automatic longint tstart, tend;
-    automatic {0} c = new();
-    int init_count = {1};
-    int target_ms = {3};
-    int incr = {2};
-    int total_count = 0;
-    int count = init_count;
-
-    tstart = gettime_ms();
-    do begin
-        repeat (count) begin
-            void'(c.randomize());
-        end
-        total_count += count;
-    
-        tend = gettime_ms();
-        count = incr;
-    end while ((tend-tstart) < target_ms);
-
-    $display("STATS: rand=%0d time_ms=%0d", total_count, (tend-tstart));
-  end
-endmodule'''.format(clsname, init_count, incr_count, target_ms)
-
-        with open("top.sv", "w") as fp:
-            fp.write(analysis_pkg)
-            fp.write(cls_pkg)
-            fp.write(driver)
-        
-        self.runner.compile(["top.sv"])
-        self.runner.elaborate("top")
-        count, time_ms = self.runner.run("top")
-        print("Results: count=%d time_ms=%d ; %f ms/item" % (count, time_ms, time_ms/count))
+        self.runner.setup(RootC, init_count, incr_count, target_ms)
+        self.runner.compile()
+        self.runner.elaborate()
+        count, time_ms = self.runner.run()
+        print("%s: count=%d time_ms=%d rand/s=%f" % (self.id(), count, time_ms, time_ms/count))
+        with open(os.path.join(self.rundir, "results", "%s.%s.csv" % (self.runner_id, self.id())), "w") as fp:
+            fp.write("%s,%s,%d,%d,%f" % (self.runner_id,self.id(), count, time_ms, time_ms/count))
 

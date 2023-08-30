@@ -21,20 +21,109 @@
 #****************************************************************************
 import os
 import subprocess
+from vsc_dataclasses.impl.ctor import Ctor
+from vsc_dataclasses.impl.pyctxt.context import Context
+from vsc_dataclasses.impl.generators.system_verilog_class_gen import SystemVerilogClassGen
 
 class SimRunner(object):
 
     def __init__(self):
+        self.sources = []
+        self.top = "top"
+        self.RootC = None
+        self.init_count = -1
+        self.incr_count = -1
+        self.target_ms = -1
         pass
 
-    def compile(self, srcs : list):
+    def initBackend(self):
+        # Select the 'dummy' backend
+        Ctor.init(Context())
+
+    def setup(self, RootC, init_count, incr_count, target_ms):
+        cls = Ctor.inst().ctxt().findDataTypeStruct(RootC.__qualname__)
+        if cls is None:
+            raise Exception("Failed to find class %s" % RootC.__qualname__)
+        clsname = RootC.__qualname__.split('.')[-1]
+
+        analysis_pkg = self.getAnalysisPkg()
+
+        cls_pkg = '''
+package cls_pkg;
+{0}
+endpackage
+  '''.format(SystemVerilogClassGen().generate(cls))
+
+        driver='''
+module top;
+  import analysis_pkg::*;
+  import cls_pkg::*;
+
+  initial begin
+    automatic longint tstart, tend;
+    automatic {0} c = new();
+    int init_count = {1};
+    int target_ms = {3};
+    int incr = {2};
+    int total_count = 0;
+    int count = init_count;
+
+    tstart = gettime_ms();
+    do begin
+        repeat (count) begin
+            void'(c.randomize());
+        end
+        total_count += count;
+    
+        tend = gettime_ms();
+        count = incr;
+    end while ((tend-tstart) < target_ms);
+
+    $display("STATS: rand=%0d time_ms=%0d", total_count, (tend-tstart));
+  end
+endmodule'''.format(clsname, init_count, incr_count, target_ms)
+
+        with open("top.sv", "w") as fp:
+            fp.write(analysis_pkg)
+            fp.write(cls_pkg)
+            fp.write(driver)
+        
+        self.sources.append("top.sv")
+
+    def compile(self):
         raise NotImplementedError("%s does not implement compile" % str(self))
     
-    def elaborate(self, top):
+    def elaborate(self):
         raise NotImplementedError("%s does not implement elaborate" % str(self))
     
-    def run(self, top) -> (int,int):
+    def run(self) -> (int,int):
         raise NotImplementedError("%s does not implement run" % str(self))
+    
+
+    def getAnalysisPkg(self):
+        return '''
+package analysis_pkg;
+  typedef struct {
+    int tv_sec;
+    int tv_usec;
+  } timeval_s;
+
+  import "DPI-C" context function int gettimeofday(output timeval_s tv, input chandle r);
+
+  function automatic longint unsigned gettime_ms();
+    automatic timeval_s tv;
+    longint unsigned ret;
+
+    if (gettimeofday(tv, null) != 0) begin
+        $display("Error: gettimeofday failed");
+    end
+    ret = tv.tv_sec;
+    ret *= 1000;
+    ret += tv.tv_usec / 1000;
+
+    return ret;
+  endfunction
+endpackage'''
     
     def parseRunLog(self, file) -> (int,int):
         count=-1
@@ -42,7 +131,7 @@ class SimRunner(object):
         with open(file, "r") as fp:
             for line in fp.readlines():
                 if line.find("STATS:") != -1:
-                    elems = line.split()
+                    elems = line[line.find("STATS:"):].split()
                     count = int(elems[1][elems[1].find('=')+1:])
                     time_ms = int(elems[2][elems[2].find('=')+1:])
                     break
@@ -53,7 +142,7 @@ class SimRunner(object):
 
 class SimRunnerMTI(SimRunner):
 
-    def compile(self, srcs : list):
+    def compile(self):
         if not os.path.isdir("work"):
             cmd = ["vlib", "work"]
             result = None
@@ -71,7 +160,7 @@ class SimRunnerMTI(SimRunner):
             "vlog",
             "-sv",
         ]
-        cmd.extend(srcs)
+        cmd.extend(self.sources)
 
         result = None
         with open("vlog.log", "w") as fp:
@@ -84,12 +173,12 @@ class SimRunnerMTI(SimRunner):
         if result.returncode != 0:
             raise Exception("Compile failed")
     
-    def elaborate(self, top):
+    def elaborate(self):
         cmd = [
             "vopt",
             "-o",
-            "%s_opt" % top,
-            top
+            "%s_opt" % self.top,
+            self.top
         ]
 
         result = None
@@ -103,13 +192,13 @@ class SimRunnerMTI(SimRunner):
         if result.returncode != 0:
             raise Exception("Elaborate failed")
     
-    def run(self, top) -> (int, int):
+    def run(self) -> (int, int):
         cmd = [
             "vsim",
             "-batch",
             "-do",
             "run -a; quit -f",
-            "%s_opt" % top
+            "%s_opt" % self.top
         ]
 
         result = None
@@ -127,12 +216,12 @@ class SimRunnerMTI(SimRunner):
     
 class SimRunnerVCS(SimRunner):
 
-    def compile(self, srcs : list):
+    def compile(self):
         cmd = [
             "vcs",
             "-sverilog",
         ]
-        cmd.extend(srcs)
+        cmd.extend(self.sources)
 
         result = None
         with open("vcs.log", "w") as fp:
@@ -145,10 +234,10 @@ class SimRunnerVCS(SimRunner):
         if result.returncode != 0:
             raise Exception("Compile failed")
     
-    def elaborate(self, top):
+    def elaborate(self):
         pass
     
-    def run(self, top) -> (int, int):
+    def run(self) -> (int, int):
         cmd = ['./simv']
 
         result = None
@@ -166,12 +255,12 @@ class SimRunnerVCS(SimRunner):
 
 class SimRunnerXCM(SimRunner):
 
-    def compile(self, srcs : list):
+    def compile(self):
         cmd = [
             "xmvlog",
             "-sv",
         ]
-        cmd.extend(srcs)
+        cmd.extend(self.sources)
 
         result = None
         with open("xmvlog.log", "w") as fp:
@@ -184,8 +273,8 @@ class SimRunnerXCM(SimRunner):
         if result.returncode != 0:
             raise Exception("Compile failed")
     
-    def elaborate(self, top):
-        cmd = ['xmelab', top]
+    def elaborate(self):
+        cmd = ['xmelab', self.top]
 
         result = None
         with open("xmelab.log", "w") as fp:
@@ -201,8 +290,8 @@ class SimRunnerXCM(SimRunner):
 
 
     
-    def run(self, top) -> (int, int):
-        cmd = ['xmsim', top]
+    def run(self) -> (int, int):
+        cmd = ['xmsim', self.top]
 
         result = None
         with open("xmsim.log", "w") as fp:
@@ -219,12 +308,12 @@ class SimRunnerXCM(SimRunner):
 
 class SimRunnerXsim(SimRunner):
 
-    def compile(self, srcs : list):
+    def compile(self):
         cmd = [
             "xvlog",
             "-sv",
         ]
-        cmd.extend(srcs)
+        cmd.extend(self.sources)
 
         result = None
         with open("xvlog.log", "w") as fp:
@@ -237,8 +326,8 @@ class SimRunnerXsim(SimRunner):
         if result.returncode != 0:
             raise Exception("Compile failed")
     
-    def elaborate(self, top):
-        cmd = ['xelab', top]
+    def elaborate(self):
+        cmd = ['xelab', self.top]
 
         result = None
         with open("xelab.log", "w") as fp:
@@ -254,8 +343,8 @@ class SimRunnerXsim(SimRunner):
 
 
     
-    def run(self, top) -> (int, int):
-        cmd = ['xsim', '--runall', top]
+    def run(self) -> (int, int):
+        cmd = ['xsim', '--runall', self.top]
 
         result = None
         with open("xsim.log", "w") as fp:
@@ -269,6 +358,31 @@ class SimRunnerXsim(SimRunner):
             raise Exception("Run failed")
         
         return self.parseRunLog("xsim.log")
+    
+    def getAnalysisPkg(self):
+        return '''
+package analysis_pkg;
+  typedef struct {
+    longint tv_sec;
+    longint tv_usec;
+  } timeval_s;
+
+  import "DPI-C" context function int gettimeofday(output timeval_s tv, input chandle r);
+
+  function automatic longint unsigned gettime_ms();
+    automatic timeval_s tv;
+    longint unsigned ret;
+
+    if (gettimeofday(tv, null) != 0) begin
+        $display("Error: gettimeofday failed");
+    end
+    ret = tv.tv_sec;
+    ret *= 1000;
+    ret += tv.tv_usec / 1000;
+
+    return ret;
+  endfunction
+endpackage'''
 
 
 
