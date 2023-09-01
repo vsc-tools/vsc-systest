@@ -95,7 +95,7 @@ class TestBase(TestCase):
         self.runner.compile()
         self.runner.elaborate()
         count, time_ms = self.runner.run()
-        print("%s: count=%d time_ms=%d rand/s=%f" % (self.id(), count, time_ms, time_ms/count))
+        print("%s: count=%d time_ms=%d ms/rand=%f" % (self.id(), count, time_ms, time_ms/count))
         with open(os.path.join(self.rundir, "results", "%s.%s.csv" % (self.runner_id, self.id())), "w") as fp:
             fp.write("%s,%s,%d,%d,%f\n" % (self.id(),self.runner_id,count, time_ms, time_ms/count))
 

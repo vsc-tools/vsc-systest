@@ -67,3 +67,54 @@ class TestSimpleLinearConstraints(TestBase):
                 self.b != self.c
 
         self.core_test(MyC, init_count=10000, incr_count=5000)
+
+    def test_32bit_4var_struct(self):
+        @vdc.randclass
+        class MyI(object):
+            a : vdc.rand_uint32_t
+            b : vdc.rand_uint32_t
+            c : vdc.rand_uint32_t
+            d : vdc.rand_uint32_t
+
+            @vdc.constraint
+            def ab_c(self):
+                self.a != self.b
+                self.a != self.c
+                self.b != self.c
+
+        @vdc.randclass
+        class MyC(object):
+            a : vdc.rand[MyI]
+            b : vdc.rand[MyI]
+            c : vdc.rand[MyI]
+            d : vdc.rand[MyI]
+
+        self.core_test(MyC, init_count=10000, incr_count=5000)
+
+    def test_32bit_4var_struct_crossconstraint(self):
+        @vdc.randclass
+        class MyI(object):
+            a : vdc.rand_uint32_t
+            b : vdc.rand_uint32_t
+            c : vdc.rand_uint32_t
+            d : vdc.rand_uint32_t
+
+            @vdc.constraint
+            def ab_c(self):
+                self.a != self.b
+                self.a != self.c
+                self.b != self.c
+
+        @vdc.randclass
+        class MyC(object):
+            a : vdc.rand[MyI]
+            b : vdc.rand[MyI]
+            c : vdc.rand[MyI]
+            d : vdc.rand[MyI]
+
+            @vdc.constraint
+            def ab_c(self):
+                self.a.a != self.b.a
+                self.b.a != self.c.a
+
+        self.core_test(MyC, init_count=10000, incr_count=5000)
