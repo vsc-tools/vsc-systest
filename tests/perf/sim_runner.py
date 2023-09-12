@@ -21,9 +21,12 @@
 #****************************************************************************
 import os
 import subprocess
+import sys
 from vsc_dataclasses.impl.ctor import Ctor
 from vsc_dataclasses.impl.pyctxt.context import Context
 from vsc_dataclasses.impl.generators.system_verilog_class_gen import SystemVerilogClassGen
+from vsc_dataclasses.impl.generators.vsc_data_model_cpp_gen import VscDataModelCppGen
+from vsc_dataclasses.impl.generators.vsc_1_data_model_py_gen import Vsc1DataModelPyGen
 
 class SimRunner(object):
 
@@ -232,7 +235,9 @@ class SimRunnerNull(SimRunner):
             raise Exception("Failed to find class %s" % RootC.__qualname__)
         self.clsname = RootC.__qualname__.split('.')[-1]
 
-        print("Class:\n%s" % SystemVerilogClassGen().generate(self.cls))
+        print("SV Class:\n%s" % SystemVerilogClassGen().generate(self.cls))
+        print("C++ Class:\n%s" % VscDataModelCppGen().generate(self.cls))
+        print("Vsc1 Class:\n%s" % Vsc1DataModelPyGen().generate(self.cls))
 
     def compile(self):
         pass
@@ -282,6 +287,82 @@ class SimRunnerVCS(SimRunner):
         
         return self.parseRunLog("simv.log")
 
+class SimRunnerVsc1(SimRunner):
+
+    def setup(self, RootC, init_count, incr_count, target_ms):
+        self.RootC = RootC
+        self.init_count = init_count
+        self.incr_count = incr_count
+        self.target_ms  = target_ms
+        self.cls = Ctor.inst().ctxt().findDataTypeStruct(RootC.__qualname__)
+        if self.cls is None:
+            raise Exception("Failed to find class %s" % RootC.__qualname__)
+        self.clsname = RootC.__qualname__.split('.')[-1]
+
+        driver='''
+def main():
+    c = {0}()
+
+    count = {1}
+    incr = {2}
+    target_ms = {3}
+    total_count = 0
+
+    tstart = round(time.time() * 1000)
+
+    while True:
+        for _ in range(count):
+            c.randomize()
+        total_count += count
+        tend = round(time.time() * 1000)
+
+        if (tend-tstart) >= target_ms:
+            break
+
+        count = incr
+
+    print("STATS: rand=%0d time_ms=%0d" % (total_count, (tend-tstart)));
+
+if __name__ == "__main__":
+    main()
+'''.format(self.clsname, init_count, incr_count, target_ms)
+
+        with open("test.py", "w") as fp:
+            fp.write("import os\n")
+            fp.write("import sys\n")
+            fp.write("import time\n")
+            fp.write("import vsc\n")
+            fp.write("\n")
+            fp.write(Vsc1DataModelPyGen().generate(self.cls))
+            fp.write("\n")
+            fp.write(driver)
+            fp.write("\n")
+
+    def compile(self):
+        pass
+    
+    def elaborate(self):
+        pass
+    
+    def run(self) -> (int, int):
+        cmd = [
+            sys.executable,
+            "test.py"
+        ]
+
+        result = None
+        with open("python.log", "w") as fp:
+            result = subprocess.run(
+                cmd,
+                stderr=subprocess.STDOUT,
+                stdout=fp
+            )
+        
+        if result.returncode != 0:
+            raise Exception("Run failed")
+        
+        return self.parseRunLog("python.log")
+
 class SimRunnerXCM(SimRunner):
 
     def compile(self):
@@ -316,9 +397,6 @@ class SimRunnerXCM(SimRunner):
         if result.returncode != 0:
             raise Exception("Elab failed")
 
-
-
-    
     def run(self) -> (int, int):
         cmd = ['xmsim', self.top]
 

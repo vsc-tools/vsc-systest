@@ -26,6 +26,7 @@ import sys
 from unittest import TestCase
 from vsc_dataclasses.impl.ctor import Ctor
 from .sim_runner import SimRunnerMTI, SimRunnerNull, SimRunnerXCM, SimRunnerXsim, SimRunnerVCS
+from .sim_runner import SimRunnerVsc1
 
 class TestBase(TestCase):
 
@@ -33,6 +34,7 @@ class TestBase(TestCase):
         "mti"  : SimRunnerMTI,
         "null" : SimRunnerNull,
         "vcs"  : SimRunnerVCS,
+        "vsc1" : SimRunnerVsc1,
         "xcm"  : SimRunnerXCM,
         "xsm"  : SimRunnerXsim,
     }
@@ -80,22 +82,65 @@ class TestBase(TestCase):
     
     def tearDown(self) -> None:
         os.chdir(self.orig_cwd)
-        if sys.exc_info() == (None, None, None):
-            try:
-                shutil.rmtree(self.testdir)
-            except Exception as e:
-                print("Note: failed to remove directory %s" % self.testdir)
+#        if sys.exc_info() == (None, None, None):
+#            try:
+#                shutil.rmtree(self.testdir)
+#            except Exception as e:
+#                print("Note: failed to remove directory %s" % self.testdir)
 
         return super().tearDown()
 
-    def core_test(self, RootC, init_count, incr_count, target_ms=1000):
+    def core_test(self, 
+                  RootC, 
+                  init_count, 
+                  incr_count, 
+                  target_ms=1000,
+                  include=None,
+                  exclude=None
+                  ):
         # TODO: determine set of classes required and order
 
-        self.runner.setup(RootC, init_count, incr_count, target_ms)
-        self.runner.compile()
-        self.runner.elaborate()
-        count, time_ms = self.runner.run()
-        print("%s: count=%d time_ms=%d ms/rand=%f" % (self.id(), count, time_ms, time_ms/count))
-        with open(os.path.join(self.rundir, "results", "%s.%s.csv" % (self.runner_id, self.id())), "w") as fp:
-            fp.write("%s,%s,%d,%d,%f\n" % (self.id(),self.runner_id,count, time_ms, time_ms/count))
+        is_controlled = include is not None or exclude is not None
+        is_included = include is not None and self.runner_id in include
+        is_excluded = exclude is not None and self.runner_id in exclude
+
+        if not is_controlled or (is_included and not is_excluded):
+            if isinstance(init_count, dict):
+                if self.runner_id in init_count.keys():
+                    init_count_p = init_count[self.runner_id]
+                elif "default" in init_count.keys():
+                    init_count_p = init_count["default"]
+                else:
+                    raise Exception("No runner-specific or default setting")
+            else:
+                init_count_p = init_count
+        
+            if isinstance(incr_count, dict):
+                if self.runner_id in incr_count.keys():
+                    incr_count_p = incr_count[self.runner_id]
+                elif "default" in incr_count.keys():
+                    incr_count_p = incr_count["default"]
+                elif None in incr_count.keys():
+                    incr_count_p = incr_count[None]
+                else:
+                    raise Exception("No runner-specific or default setting")
+            else:
+                incr_count_p = incr_count
+
+            self.runner.setup(
+                RootC, 
+                init_count_p, 
+                incr_count_p, 
+                target_ms)
+            self.runner.compile()
+            self.runner.elaborate()
+            count, time_ms = self.runner.run()
+            print("%s: count=%d time_ms=%d ms/rand=%f" % (self.id(), count, time_ms, time_ms/count))
+            with open(os.path.join(self.rundir, "results", "%s.%s.csv" % (self.runner_id, self.id())), "w") as fp:
+                fp.write("%s,%s,%d,%d,%f\n" % (self.id(),self.runner_id,count, time_ms, time_ms/count))
+        else:
+            print("%s: SKIP" % (self.id(),))
+#            with open(os.path.join(self.rundir, "results", "%s.%s.csv" % (self.runner_id, self.id())), "w") as fp:
+#                fp.write("%s,%s,%d,%d,%f\n" % (self.id(),self.runner_id,0,0,0))
+
 

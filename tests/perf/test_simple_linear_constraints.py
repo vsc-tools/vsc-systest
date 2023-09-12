@@ -34,7 +34,10 @@ class TestSimpleLinearConstraints(TestBase):
             def ab_c(self):
                 self.a < self.b
 
-        self.core_test(MyC, init_count=10000, incr_count=5000)
+        self.core_test(MyC, init_count={
+            "vsc1": 1000,
+            "default": 10000}, 
+            incr_count=5000)
 
     def test_32bit_4var_alleq(self):
         @vdc.randclass
@@ -50,7 +53,9 @@ class TestSimpleLinearConstraints(TestBase):
                 self.a == self.c
                 self.b == self.c
 
-        self.core_test(MyC, init_count=10000, incr_count=5000)
+        self.core_test(MyC, init_count={
+            "vsc1": 1000,
+            "default": 10000}, incr_count=5000)
 
     def test_32bit_4var_noteq(self):
         @vdc.randclass
@@ -66,7 +71,11 @@ class TestSimpleLinearConstraints(TestBase):
                 self.a != self.c
                 self.b != self.c
 
-        self.core_test(MyC, init_count=10000, incr_count=5000)
+        self.core_test(MyC, init_count={
+            "vsc1": 500,
+            None: 10000}, incr_count={
+            "vsc1": 250,
+            None: 5000})
 
     def test_32bit_4var_struct(self):
         @vdc.randclass
@@ -89,7 +98,9 @@ class TestSimpleLinearConstraints(TestBase):
             c : vdc.rand[MyI]
             d : vdc.rand[MyI]
 
-        self.core_test(MyC, init_count=10000, incr_count=5000)
+        self.core_test(MyC, init_count={
+            "vsc1": 1000,
+            None: 10000}, incr_count=5000)
 
     def test_32bit_4var_struct_crossconstraint(self):
         @vdc.randclass

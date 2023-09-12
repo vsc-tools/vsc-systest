@@ -11,6 +11,8 @@ package:
       url: https://github.com/vsc-tools/pyvsc-dataclasses.git
     - name: pytypeworks
       url: https://github.com/mballance/pytypeworks.git
+    - name: pyvsc
+      url: https://github.com/fvutils/pyvsc.git
     - name: toposort
       src: pypi
 
