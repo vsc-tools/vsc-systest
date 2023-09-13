@@ -36,7 +36,7 @@ class TestSimpleLinearConstraints(TestBase):
 
         self.core_test(MyC, init_count={
             "vsc1": 1000,
-            "default": 10000}, 
+            None: 10000}, 
             incr_count=5000,
             exclude={"vsc-api"})
 
@@ -56,7 +56,7 @@ class TestSimpleLinearConstraints(TestBase):
 
         self.core_test(MyC, init_count={
             "vsc1": 1000,
-            "default": 10000}, 
+            None: 10000}, 
             incr_count=5000,
             exclude={"vsc-api"})
 
