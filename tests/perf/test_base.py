@@ -25,16 +25,22 @@ import shutil
 import sys
 from unittest import TestCase
 from vsc_dataclasses.impl.ctor import Ctor
-from .sim_runner import SimRunnerMTI, SimRunnerNull, SimRunnerXCM, SimRunnerXsim, SimRunnerVCS
-from .sim_runner import SimRunnerVsc1
+from .sim_runner_mti import SimRunnerMTI
+from .runner_null import RunnerNull
+from .sim_runner_vcs import SimRunnerVCS
+from .runner_vsc_1 import RunnerVsc1
+from .runner_vsc_api import RunnerVscApi
+from .sim_runner_xcm import SimRunnerXCM
+from .sim_runner_xsim import SimRunnerXsim
 
 class TestBase(TestCase):
 
     Runners = {
         "mti"  : SimRunnerMTI,
-        "null" : SimRunnerNull,
+        "null" : RunnerNull,
         "vcs"  : SimRunnerVCS,
-        "vsc1" : SimRunnerVsc1,
+        "vsc1" : RunnerVsc1,
+        "vsc-api" : RunnerVscApi,
         "xcm"  : SimRunnerXCM,
         "xsm"  : SimRunnerXsim,
     }

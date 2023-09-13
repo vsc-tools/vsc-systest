@@ -11,8 +11,14 @@ package:
       url: https://github.com/vsc-tools/pyvsc-dataclasses.git
     - name: pytypeworks
       url: https://github.com/mballance/pytypeworks.git
+    - name: ivpm
+      url: https://github.com/fvutils/ivpm.git
     - name: pyvsc
       url: https://github.com/fvutils/pyvsc.git
+    - name: vsc-dm
+      url: http://github.com/vsc-tools/vsc-dm.git
+    - name: vsc-solvers
+      url: https://github.com/vsc-tools/vsc-solvers.git
     - name: toposort
       src: pypi
 

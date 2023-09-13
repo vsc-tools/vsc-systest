@@ -28,7 +28,8 @@ import sys
 target_cmd_m = {
     "mti": "vlog",
     "vcs": "vcs",
-    "vsc1": None,
+    "vsc1":    None,
+    "vsc-api": None,
     "xsm": "xsim",
     "xcm": "xmvlog"
 }
