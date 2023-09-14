@@ -107,15 +107,15 @@ class TestBase(TestCase):
         # TODO: determine set of classes required and order
 
         is_controlled = include is not None or exclude is not None
-        is_included = include is not None and self.runner_id in include
+        is_included = include is None or self.runner_id in include
         is_excluded = exclude is not None and self.runner_id in exclude
 
         if not is_controlled or (is_included and not is_excluded):
             if isinstance(init_count, dict):
                 if self.runner_id in init_count.keys():
                     init_count_p = init_count[self.runner_id]
-                elif "default" in init_count.keys():
-                    init_count_p = init_count["default"]
+                elif None in init_count.keys():
+                    init_count_p = init_count[None]
                 else:
                     raise Exception("No runner-specific or default setting")
             else:
@@ -124,8 +124,8 @@ class TestBase(TestCase):
             if isinstance(incr_count, dict):
                 if self.runner_id in incr_count.keys():
                     incr_count_p = incr_count[self.runner_id]
-                elif "default" in incr_count.keys():
-                    incr_count_p = incr_count["default"]
+                elif None in incr_count.keys():
+                    incr_count_p = incr_count[None]
                 elif None in incr_count.keys():
                     incr_count_p = incr_count[None]
                 else:

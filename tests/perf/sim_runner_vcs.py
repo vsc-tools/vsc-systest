@@ -19,7 +19,7 @@
 #*     Author: 
 #*
 #****************************************************************************
-
+import subprocess
 from .sim_runner import SimRunner
 
 class SimRunnerVCS(SimRunner):
