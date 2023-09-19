@@ -24,7 +24,7 @@ from .test_base import TestBase
 
 class TestSimpleLinearConstraints(TestBase):
 
-    def test_32bit_2var_ule(self):
+    def test_32bit_2var_ule_32(self):
         @vdc.randclass
         class MyC(object):
             a : vdc.rand_uint32_t
@@ -38,7 +38,23 @@ class TestSimpleLinearConstraints(TestBase):
             "vsc1": 1000,
             None: 10000}, 
             incr_count=5000,
-            exclude={"vsc-api"})
+            exclude={})
+
+    def test_32bit_2var_ule_8(self):
+        @vdc.randclass
+        class MyC(object):
+            a : vdc.rand_uint8_t
+            b : vdc.rand_uint8_t
+
+            @vdc.constraint
+            def ab_c(self):
+                self.a < self.b
+
+        self.core_test(MyC, init_count={
+            "vsc1": 1000,
+            None: 10000}, 
+            incr_count=5000,
+            exclude={})
 
     def test_32bit_4var_alleq(self):
         @vdc.randclass

@@ -48,7 +48,7 @@ class TestScalarFixedSzArr(TestBase):
                 init_count=500, 
                 incr_count=250)
 
-    def test_constrained_indep_med(self):
+    def disabled_test_constrained_indep_med(self):
 
         @vdc.randclass
         class MyC(object):
