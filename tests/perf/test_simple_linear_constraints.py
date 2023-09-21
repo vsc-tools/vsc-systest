@@ -74,7 +74,7 @@ class TestSimpleLinearConstraints(TestBase):
             "vsc1": 1000,
             None: 10000}, 
             incr_count=5000,
-            exclude={"vsc-api"})
+            exclude={})
 
     def test_32bit_4var_noteq(self):
         @vdc.randclass
@@ -95,7 +95,7 @@ class TestSimpleLinearConstraints(TestBase):
             None: 10000}, incr_count={
             "vsc1": 250,
             None: 5000},
-            exclude={"vsc-api"})
+            exclude={})
 
     def test_32bit_4var_struct(self):
         @vdc.randclass
@@ -122,7 +122,7 @@ class TestSimpleLinearConstraints(TestBase):
             "vsc1": 1000,
             None: 10000}, 
             incr_count=5000,
-            exclude={"vsc-api"})
+            exclude={})
 
     def test_32bit_4var_struct_crossconstraint(self):
         @vdc.randclass
@@ -153,4 +153,4 @@ class TestSimpleLinearConstraints(TestBase):
         self.core_test(MyC, 
             init_count=10000, 
             incr_count=5000,
-            exclude={"vsc-api"})
+            exclude={})

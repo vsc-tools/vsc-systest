@@ -126,9 +126,12 @@ class RunnerVscApi(Runner):
         cmd.extend(ivpm.PkgCompileFlags().flags(vsc_solvers_pkg))
         cmd.append("-lpthread")
 
-        result = subprocess.run(
-            cmd
-        )
+        with open("compile.log", "w") as fp:
+            result = subprocess.run(
+                cmd,
+                stderr=subprocess.STDOUT,
+                stdout=fp
+            )
 
         if result.returncode != 0:
             raise Exception("Compilation failed")
